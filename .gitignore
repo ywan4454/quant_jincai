@@ -1,0 +1,10 @@
+config.json
+*.db
+__pycache__/
+*.pyc
+okooo_html.txt
+500_html.txt
+*.csv
+wc2026_predictions/wm2026_probabilities.html
+wc2026_predictions/visualization_png/
+.claude/

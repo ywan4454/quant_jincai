@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quant-JingCai | L2 Momentum Radar</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        :root {
+            --bg: #0f1115;
+            --surface: rgba(255, 255, 255, 0.03);
+            --surface-hover: rgba(255, 255, 255, 0.06);
+            --border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8f9fa;
+            --text-secondary: #8b949e;
+            --accent: #00ff88;
+            --danger: #ff4757;
+            --warning: #ffa502;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-primary);
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(0, 255, 136, 0.03), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(0, 168, 255, 0.03), transparent 25%);
+            min-height: 100vh;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+
+        .title {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(90deg, #fff, #8b949e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+        }
+
+        .pulse {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent);
+            animation: pulse 2s infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            background: var(--surface-hover);
+            border-color: rgba(0, 255, 136, 0.3);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .match-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .time-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 200px;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .signal-badge {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .signal-snipe { background: rgba(255, 71, 87, 0.1); color: var(--danger); border: 1px solid rgba(255, 71, 87, 0.2); }
+        .signal-hold { background: rgba(0, 255, 136, 0.1); color: var(--accent); border: 1px solid rgba(0, 255, 136, 0.2); }
+        .signal-wait { background: rgba(139, 148, 158, 0.1); color: var(--text-secondary); border: 1px solid rgba(139, 148, 158, 0.2); }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1 class="title">Quant-JingCai <span style="font-weight: 300; opacity: 0.5;">v6.0 L2 Radar</span></h1>
+        <div style="font-family: 'JetBrains Mono'; font-size: 0.9rem; color: var(--accent);">
+            <span class="pulse"></span> LIVE ORDER BOOK
+        </div>
+    </div>
+
+    <div class="grid" id="dashboard-grid">
+        <!-- Cards injected via JS -->
+    </div>
+
+    <script>
+        let charts = {};
+
+        async function fetchData() {
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+                renderDashboard(data);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        function renderDashboard(data) {
+            const grid = document.getElementById('dashboard-grid');
+
+            data.forEach((match, index) => {
+                const cardId = `card-${index}`;
+                let card = document.getElementById(cardId);
+                
+                // Determine signal
+                const evs = match.chart_evs;
+                let signalHTML = '<div class="signal-badge signal-wait">EV < 1.0</div>';
+                if (evs.length >= 2 && evs[evs.length - 1] >= 1.01) {
+                    const dEV = evs[evs.length - 1] - evs[evs.length - 2];
+                    if (dEV < 0) signalHTML = '<div class="signal-badge signal-snipe">🔥 SNIPE</div>';
+                    else signalHTML = '<div class="signal-badge signal-hold">📈 HOLD</div>';
+                }
+
+                // Format times for X axis (HH:MM)
+                const labels = match.chart_times.map(t => {
+                    const d = new Date(t);
+                    return d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                });
+
+                if (!card) {
+                    // Create card structure if it doesn't exist
+                    card = document.createElement('div');
+                    card.id = cardId;
+                    card.className = 'card';
+                    
+                    card.innerHTML = `
+                        <div id="signal-${index}">${signalHTML}</div>
+                        <div class="match-title">${match.match_name}</div>
+                        <div class="time-badge" id="time-${index}">LAST UPDATED: ${new Date(match.timestamp).toLocaleTimeString()}</div>
+                        <div class="chart-container">
+                            <canvas id="chart-${index}"></canvas>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+
+                    // Initialize Chart.js
+                    const ctx = document.getElementById(`chart-${index}`).getContext('2d');
+                    charts[index] = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'EV (Expected Value)',
+                                data: evs,
+                                borderColor: '#00ff88',
+                                backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                                borderWidth: 2,
+                                pointRadius: 3,
+                                pointBackgroundColor: '#fff',
+                                fill: true,
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false,
+                                    callbacks: {
+                                        label: function(context) { return ' EV: ' + context.parsed.y.toFixed(3); }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                                    ticks: { color: '#8b949e', maxTicksLimit: 5 }
+                                },
+                                y: {
+                                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                                    ticks: { color: '#8b949e' },
+                                    suggestedMin: 0.85,
+                                    suggestedMax: 1.05
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    // Update existing card & chart
+                    document.getElementById(`signal-${index}`).innerHTML = signalHTML;
+                    document.getElementById(`time-${index}`).innerText = `LAST UPDATED: ${new Date(match.timestamp).toLocaleTimeString()}`;
+                    
+                    const chart = charts[index];
+                    chart.data.labels = labels;
+                    chart.data.datasets[0].data = evs;
+                    
+                    // Change color based on current EV
+                    const latestEV = evs[evs.length - 1];
+                    const color = latestEV >= 1.01 ? '#00ff88' : '#ff4757';
+                    const bgColor = latestEV >= 1.01 ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 71, 87, 0.1)';
+                    
+                    chart.data.datasets[0].borderColor = color;
+                    chart.data.datasets[0].backgroundColor = bgColor;
+                    chart.update('none'); // Update without animation for smooth polling
+                }
+            });
+        }
+
+        fetchData();
+        setInterval(fetchData, 5000);
+    </script>
+</body>
+</html>
