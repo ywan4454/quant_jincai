@@ -199,7 +199,14 @@ def align_teams(jc_matches, pinny_matches):
         "瑞典": "Sweden",
         "日本": "Japan",
         "巴拉圭": "Paraguay",
-        "摩洛哥": "Morocco"
+        "摩洛哥": "Morocco",
+        "西班牙": "Spain",
+        "葡萄牙": "Portugal",
+        "美国": "USA",
+        "比利时": "Belgium",
+        "瑞士": "Switzerland",
+        "哥伦比亚": "Colombia",
+        "埃及": "Egypt"
     }
     
     aligned_data = []
@@ -236,7 +243,7 @@ def align_teams(jc_matches, pinny_matches):
                 aligned_data.append({
                     "match_name": f"{jc['home_team']} vs {jc['away_team']}",
                     "match_time": pin_dt_bj.strftime("%Y-%m-%d %H:%M"),
-                    "jc_odds": jc["odds"]["had"],
+                    "jc_odds": jc["odds"],  # 传递完整的赔率字典（含 had/hhad/zjq/bqc）
                     "pin_odds": pin["odds"],
                     "pin_home_name": pin["home_team"],
                     "pin_away_name": pin["away_team"]

@@ -71,9 +71,9 @@ def analyze_match(aligned_match):
                 "kelly_pct": kelly_pct
             })
             
-    # 2. 让球盘口 (RQSPF)
+    # 2. 让球盘口 (RQSPF) - 暂时屏蔽，避免假正 EV 干扰
     hhad = jc_odds_dict.get("hhad")
-    if hhad:
+    if False and hhad:
         # 极简泊松映射：让球会使得主胜概率降低，客胜概率升高。
         # 此处使用简单的线性衰减作为演示模型，实盘需要引入严格的积分函数。
         handicap = hhad["handicap"]
@@ -97,9 +97,9 @@ def analyze_match(aligned_match):
                     "kelly_pct": kelly_pct
                 })
                 
-    # 3. 总进球 (ZJQ)
+    # 3. 总进球 (ZJQ) - 暂时屏蔽
     zjq = jc_odds_dict.get("zjq")
-    if zjq:
+    if False and zjq:
         # 演示用：假定 0球 和 1球 的理论概率分布，这应该从 totals 接口获取并建模
         zjq_mock_probs = {"0": 0.15, "1": 0.20, "2": 0.25, "3": 0.20, "4": 0.10, "5": 0.05, "6": 0.03, "7+": 0.02}
         for goals, odds_val in zjq.items():
@@ -114,9 +114,9 @@ def analyze_match(aligned_match):
                 "kelly_pct": kelly_pct
             })
             
-    # 4. 半全场 (BQC)
+    # 4. 半全场 (BQC) - 暂时屏蔽
     bqc = jc_odds_dict.get("bqc")
-    if bqc:
+    if False and bqc:
         # 演示用：胜胜 的概率约等于 胜 的平方（简单贝叶斯）
         for bqc_type, odds_val in bqc.items():
             tp = true_probs[0] * true_probs[0] if "胜胜" in bqc_type else 0.08
